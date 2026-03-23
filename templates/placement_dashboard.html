@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard – PlaceAI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='placement_style.css') }}">
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <a class="logo" href="{{ url_for('dashboard') }}">
+        <div class="logo-icon">🎯</div>
+        <div>
+          <div class="logo-text">PlaceAI</div>
+          <div class="logo-sub">v2.0 · Random Forest</div>
+        </div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <a class="nav-link active" href="{{ url_for('dashboard') }}">
+        <span class="icon">📊</span> Dashboard
+      </a>
+      <a class="nav-link" href="{{ url_for('predict') }}">
+        <span class="icon">🔮</span> Run Prediction
+      </a>
+      <a class="nav-link" href="{{ url_for('analytics') }}">
+        <span class="icon">📈</span> Analytics & Graphs
+      </a>
+      <div class="nav-section-label" style="margin-top:12px;">System</div>
+      {% if session.role == 'admin' %}
+      <a class="nav-link" href="{{ url_for('admin_panel') }}"><span class="icon">🛡️</span> Admin Panel</a>
+      {% endif %}
+      <a class="nav-link" href="{{ url_for('logout') }}">
+        <span class="icon">🚪</span> Logout
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">{{ session.username[0].upper() }}</div>
+        <div>
+          <div class="user-name">{{ session.username }}</div>
+          <div class="user-role">{{ session.role }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content fade-in">
+    <div class="page-header">
+      <h1 class="page-title">Welcome back, {{ session.username }} 👋</h1>
+      <p class="page-sub">Here's your placement intelligence overview for today</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- Model Stats -->
+    <div class="stat-grid">
+      <div class="stat-card green">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-label">Best Model</div>
+        <div class="stat-value" style="font-size:18px;margin-top:8px;">Random Forest</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px;">Primary Predictor</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-label">Model Accuracy</div>
+        <div class="stat-value">73.6<span style="font-size:16px;">%</span></div>
+        <div style="font-size:12px;color:var(--text3);">F1: 77.1%</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-icon">🗃️</div>
+        <div class="stat-label">Dataset Size</div>
+        <div class="stat-value">1,200</div>
+        <div style="font-size:12px;color:var(--text3);">840 train / 360 test</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-icon">🧩</div>
+        <div class="stat-label">Features Used</div>
+        <div class="stat-value">22</div>
+        <div style="font-size:12px;color:var(--text3);">After one-hot encoding</div>
+      </div>
+    </div>
+
+    {% if sys_stats %}
+    <!-- Admin stats -->
+    <div class="stat-grid" style="margin-bottom:28px;">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-label">Registered Students</div>
+        <div class="stat-value">{{ sys_stats[0] }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔮</div>
+        <div class="stat-label">Total Predictions</div>
+        <div class="stat-value">{{ sys_stats[1] }}</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Predicted Placed</div>
+        <div class="stat-value">{{ sys_stats[2] }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="grid-2">
+      <!-- Model Comparison -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🤖 Model Comparison</span>
+        </div>
+        <div class="card-body">
+          {% for name, vals in [('Random Forest', {'acc': 73.6, 'f1': 77.1}),
+                                 ('Logistic Regression', {'acc': 74.2, 'f1': 76.9}),
+                                 ('KNN', {'acc': 65.6, 'f1': 68.7})] %}
+          <div style="margin-bottom:18px;">
+            <div class="flex justify-between items-center" style="margin-bottom:6px;">
+              <span style="font-size:13.5px;font-weight:600;">{{ name }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);">
+                {{ vals.acc }}% acc
+              </span>
+            </div>
+            <div class="prob-bar-wrap">
+              <div class="prob-bar {{ 'high' if vals.f1 >= 70 else 'low' }}"
+                   style="width:{{ vals.f1 }}%"></div>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px;">F1-Score: {{ vals.f1 }}%</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Prediction History -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 My Prediction History</span>
+          <a href="{{ url_for('predict') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12px;">
+            + New
+          </a>
+        </div>
+        <div class="card-body" style="padding:0;">
+          {% if history %}
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Result</th>
+                <th>Probability</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in history %}
+              <tr>
+                <td>
+                  <span class="badge {{ 'badge-green' if row[0]=='Placed' else 'badge-red' }}">
+                    {{ '✅' if row[0]=='Placed' else '❌' }} {{ row[0] }}
+                  </span>
+                </td>
+                <td style="font-family:'JetBrains Mono',monospace;color:var(--accent);">
+                  {{ row[1] }}%
+                </td>
+                <td style="font-size:12px;">{{ row[2][:16] }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div style="padding:32px;text-align:center;color:var(--text3);">
+            <div style="font-size:32px;margin-bottom:8px;">🔮</div>
+            <p>No predictions yet. Run your first prediction!</p>
+            <a href="{{ url_for('predict') }}" class="btn btn-primary" style="margin-top:14px;">
+              Start Now →
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div style="margin-top:24px;padding:28px 32px;background:linear-gradient(135deg,rgba(79,142,247,0.08),rgba(155,114,247,0.08));
+         border:1px solid rgba(79,142,247,0.2);border-radius:var(--radius);display:flex;
+         align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+      <div>
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">Ready to check your placement odds?</h3>
+        <p style="font-size:13px;color:var(--text2);">
+          Fill in your academic profile and get an instant AI-powered prediction with personalized feedback.
+        </p>
+      </div>
+      <a href="{{ url_for('predict') }}" class="btn btn-primary">
+        Run Prediction 🔮
+      </a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

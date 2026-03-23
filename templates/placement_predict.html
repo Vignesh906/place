@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predict – PlaceAI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='placement_style.css') }}">
+  <style>
+  
+    .toggle-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 18px;
+    }
+    .toggle-label-text { flex:1; font-size:14px; font-weight:500; color:var(--text); }
+    .toggle-label-text span { display:block; font-size:12px; color:var(--text3); font-weight:400; margin-top:2px; }
+    .toggle-switch { position:relative; width:48px; height:26px; flex-shrink:0; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider {
+      position:absolute; inset:0;
+      background:var(--border2); border-radius:50px; cursor:pointer; transition:background 0.3s;
+    }
+    .toggle-slider::before {
+      content:''; position:absolute;
+      width:20px; height:20px; left:3px; top:3px;
+      background:var(--text2); border-radius:50%;
+      transition:transform 0.3s, background 0.3s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background:var(--accent); }
+    .toggle-switch input:checked + .toggle-slider::before { transform:translateX(22px); background:#fff; }
+
+    .collapsible { overflow:hidden; max-height:0; opacity:0; transition:max-height 0.4s ease, opacity 0.3s ease; }
+    .collapsible.open { max-height:500px; opacity:1; }
+
+
+    .info-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(79,142,247,0.08);
+      border: 1px solid rgba(79,142,247,0.2);
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--text2);
+    }
+    .info-banner.show { display:flex; }
+    .info-banner .icon { font-size:20px; flex-shrink:0; }
+
+    
+    select#degree-type-sel.technical   { border-color: var(--green);  box-shadow: 0 0 0 3px rgba(34,199,122,0.1); }
+    select#degree-type-sel.nontechnical{ border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,142,247,0.1); }
+
+   
+    .na-badge {
+      display:inline-block;
+      background:rgba(247,201,72,0.1); color:var(--gold);
+      border:1px solid rgba(247,201,72,0.25);
+      border-radius:50px; font-size:11px; padding:2px 10px;
+      margin-left:8px; font-weight:600;
+    }
+    .tech-badge {
+      display:none;
+      background:rgba(34,199,122,0.1); color:var(--green);
+      border:1px solid rgba(34,199,122,0.25);
+      border-radius:50px; font-size:11px; padding:2px 10px;
+      margin-left:8px; font-weight:600;
+    }
+    .nontech-badge {
+      display:none;
+      background:rgba(79,142,247,0.1); color:var(--accent);
+      border:1px solid rgba(79,142,247,0.25);
+      border-radius:50px; font-size:11px; padding:2px 10px;
+      margin-left:8px; font-weight:600;
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <a class="logo" href="{{ url_for('dashboard') }}">
+        <div class="logo-icon">🎯</div>
+        <div>
+          <div class="logo-text">PlaceAI</div>
+          <div class="logo-sub">v2.0 · Random Forest</div>
+        </div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <a class="nav-link" href="{{ url_for('dashboard') }}"><span class="icon">📊</span> Dashboard</a>
+      <a class="nav-link active" href="{{ url_for('predict') }}"><span class="icon">🔮</span> Run Prediction</a>
+      <a class="nav-link" href="{{ url_for('analytics') }}"><span class="icon">📈</span> Analytics & Graphs</a>
+      <div class="nav-section-label" style="margin-top:12px;">System</div>
+      {% if session.role == 'admin' %}
+      <a class="nav-link" href="{{ url_for('admin_panel') }}"><span class="icon">🛡️</span> Admin Panel</a>
+      {% endif %}
+      <a class="nav-link" href="{{ url_for('logout') }}"><span class="icon">🚪</span> Logout</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">{{ session.username[0].upper() }}</div>
+        <div>
+          <div class="user-name">{{ session.username }}</div>
+          <div class="user-role">{{ session.role }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content fade-in">
+    <div class="page-header">
+      <h1 class="page-title">🔮 Placement Prediction</h1>
+      <p class="page-sub">Fill in your profile — technical fields auto-adjust based on your degree type</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">⚠️ {{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="predict-container">
+      <form action="{{ url_for('predict') }}" method="POST" id="predict-form">
+
+        
+        <div class="card mb-6">
+          <div class="card-header">
+            <span class="card-title">📚 Academic Performance</span>
+          </div>
+          <div class="card-body">
+
+            <div class="form-section-title">School Scores (%)</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">SSC Percentage (10th) *</label>
+                <input type="number" name="ssc_p" class="form-control"
+                       placeholder="e.g. 72.5" min="40" max="100" step="0.1" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Intermediate Percentage (12th) *</label>
+                <input type="number" name="hsc_p" class="form-control"
+                       placeholder="e.g. 68.0" min="38" max="100" step="0.1" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Intermediate Stream *</label>
+                <select name="hsc_s" class="form-control">
+                  <option value="Science">MPC/BIPC</option>
+                  <option value="Commerce">CEC/MEC</option>
+                  <option value="Arts">HEC/Arts & Humanities</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Entrance Test Percentage *</label>
+                <input type="number" name="etest_p" class="form-control"
+                       placeholder="e.g. 72.0" min="0" max="100" step="0.1" required>
+              </div>
+            </div>
+
+            <div class="form-section-title" style="margin-top:8px;">Degree Details</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Degree Percentage *</label>
+                <input type="number" name="degree_p" class="form-control"
+                       placeholder="e.g. 70.2" min="40" max="100" step="0.1" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  Degree Type *
+                  <span class="tech-badge"    id="tech-badge">⚙️ Technical</span>
+                  <span class="nontech-badge" id="nontech-badge">📋 Non-Technical</span>
+                </label>
+               
+                <select name="degree_t" id="degree-type-sel"
+                        class="form-control" onchange="onDegreeChange(this)">
+                  <option value="Sci&Tech">Technical</option>
+                  <option value="Comm&Mgmt">Non-Technical</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-section-title" style="margin-top:8px;">
+              MBA Details
+              <span class="na-badge" id="mba-na-badge">If Applicable</span>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-label-text">
+                Have you done / are you pursuing an MBA?
+                <span>Toggle ON to fill MBA details — leave OFF if not applicable</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="mba-toggle" onchange="toggleMBA(this)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <input type="hidden" name="has_mba" id="has-mba-val" value="no">
+            <div class="collapsible" id="mba-section">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">MBA Percentage</label>
+                  <input type="number" name="mba_p" id="mba-p-input" class="form-control"
+                         placeholder="e.g. 65.0" min="40" max="100" step="0.1" disabled>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">MBA Specialisation</label>
+                  <select name="specialisation" id="spec-input" class="form-control" disabled>
+                    <option value="Mkt&HR">Marketing & HR</option>
+                    <option value="Mkt&Fin">Marketing & Finance</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        
+        <div class="card mb-6">
+          <div class="card-header">
+            <span class="card-title">⚙️ Skills Assessment</span>
+            <span id="skills-card-badge" style="font-size:12px;color:var(--text3);">
+              Auto-adjusts based on your degree type
+            </span>
+          </div>
+          <div class="card-body">
+
+            <!-- Communication — always visible for everyone -->
+            <div class="form-group">
+              <label class="form-label">
+                Communication Skill (1–10)
+                <span class="range-val" id="comm-val">5</span>
+              </label>
+              <input type="range" name="communication" id="comm-range"
+                     min="1" max="10" value="5"
+                     oninput="document.getElementById('comm-val').textContent=this.value">
+            </div>
+
+            <!-- ── TECHNICAL FIELDS — shown only for Sci&Tech ── -->
+            <div class="collapsible open" id="tech-fields">
+              <div class="form-group">
+                <label class="form-label">
+                  Technical Skill (1–10)
+                  <span class="range-val" id="tech-val">5</span>
+                </label>
+                <input type="range" name="technical" id="tech-range"
+                       min="1" max="10" value="5"
+                       oninput="document.getElementById('tech-val').textContent=this.value">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Coding Score (0–100)</label>
+                <input type="number" name="coding_score" id="coding-input"
+                       class="form-control" placeholder="e.g. 65"
+                       min="0" max="100" step="1">
+              </div>
+            </div>
+
+      
+
+         
+            <input type="hidden" name="is_technical" id="is-technical-val" value="yes">
+
+          </div>
+        </div>
+
+        
+        <div class="card mb-6">
+          <div class="card-header">
+            <span class="card-title">💼 Experience & Background</span>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Gender *</label>
+                <select name="gender" class="form-control">
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Work Experience *</label>
+                <select name="workex" class="form-control">
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Internships Completed *</label>
+                <select name="internships" class="form-control">
+                  <option value="0">0 – None</option>
+                  <option value="1">1 Internship</option>
+                  <option value="2">2 Internships</option>
+                  <option value="3">3+ Internships</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Projects Built *</label>
+                <select name="projects" class="form-control">
+                  <option value="0">0 – None</option>
+                  <option value="1">1 Project</option>
+                  <option value="2">2 Projects</option>
+                  <option value="3">3 Projects</option>
+                  <option value="4">4+ Projects</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <button type="submit" class="btn btn-primary"
+                  style="flex:1;justify-content:center;padding:14px;"
+                  onclick="prepareSubmit()">
+            🔮 Predict My Placement & Generate Graphs
+          </button>
+          <button type="button" class="btn btn-ghost" onclick="resetForm()">Reset</button>
+        </div>
+
+      </form>
+    </div>
+  </main>
+</div>
+
+<script>
+
+const TECHNICAL_DEGREES = ['Sci&Tech'];
+
+
+function onDegreeChange(sel) {
+  const isTech = TECHNICAL_DEGREES.includes(sel.value);
+  const techFields   = document.getElementById('tech-fields');
+  const nontechBanner= document.getElementById('nontech-banner');
+  const techBadge    = document.getElementById('tech-badge');
+  const nontechBadge = document.getElementById('nontech-badge');
+  const istech       = document.getElementById('is-technical-val');
+  const codingInput  = document.getElementById('coding-input');
+  const techRange    = document.getElementById('tech-range');
+
+  if (isTech) {
+    
+    techFields.classList.add('open');
+    nontechBanner.classList.remove('show');
+    techBadge.style.display    = 'inline-block';
+    nontechBadge.style.display = 'none';
+    sel.className = 'form-control technical';
+    istech.value  = 'yes';
+   
+    codingInput.disabled = false;
+    techRange.disabled   = false;
+    codingInput.required = true;
+  } else {
+  
+    techFields.classList.remove('open');
+    nontechBanner.classList.add('show');
+    techBadge.style.display    = 'none';
+    nontechBadge.style.display = 'inline-block';
+    sel.className = 'form-control nontechnical';
+    istech.value  = 'no';
+    
+    codingInput.disabled = true;
+    codingInput.required = false;
+    codingInput.value    = '';
+    techRange.disabled   = true;
+  }
+}
+
+function prepareSubmit() {
+  
+  const commRange = document.getElementById('comm-range');
+  if (!commRange.value) commRange.value = 5;
+}
+
+
+function toggleMBA(checkbox) {
+  const section   = document.getElementById('mba-section');
+  const badge     = document.getElementById('mba-na-badge');
+  const hidden    = document.getElementById('has-mba-val');
+  const mbaInput  = document.getElementById('mba-p-input');
+  const specInput = document.getElementById('spec-input');
+
+  if (checkbox.checked) {
+    section.classList.add('open');
+    badge.style.display = 'none';
+    hidden.value        = 'yes';
+    mbaInput.disabled   = false;
+    specInput.disabled  = false;
+    mbaInput.required   = true;
+  } else {
+    section.classList.remove('open');
+    badge.style.display = 'inline-block';
+    hidden.value        = 'no';
+    mbaInput.disabled   = true;
+    specInput.disabled  = true;
+    mbaInput.required   = false;
+    mbaInput.value      = '';
+  }
+}
+
+
+function resetForm() {
+  document.getElementById('predict-form').reset();
+  setTimeout(() => {
+  
+    const degSel = document.getElementById('degree-type-sel');
+    degSel.value = 'Sci&Tech';
+    onDegreeChange(degSel);
+
+    
+    document.getElementById('mba-toggle').checked  = false;
+    document.getElementById('mba-section').classList.remove('open');
+    document.getElementById('mba-na-badge').style.display = 'inline-block';
+    document.getElementById('has-mba-val').value   = 'no';
+    document.getElementById('mba-p-input').disabled  = true;
+    document.getElementById('spec-input').disabled   = true;
+    document.getElementById('mba-p-input').required  = false;
+
+    
+    document.getElementById('comm-val').textContent = '5';
+    document.getElementById('tech-val').textContent = '5';
+  }, 10);
+}
+
+
+window.addEventListener('DOMContentLoaded', () => {
+  const degSel = document.getElementById('degree-type-sel');
+  onDegreeChange(degSel); // run once with default value
+});
+</script>
+</body>
+</html>

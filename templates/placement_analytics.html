@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics – PlaceAI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='placement_style.css') }}">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <a class="logo" href="{{ url_for('dashboard') }}">
+        <div class="logo-icon">🎯</div>
+        <div>
+          <div class="logo-text">PlaceAI</div>
+          <div class="logo-sub">v2.0 · Random Forest</div>
+        </div>
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <a class="nav-link" href="{{ url_for('dashboard') }}"><span class="icon">📊</span> Dashboard</a>
+      <a class="nav-link" href="{{ url_for('predict') }}"><span class="icon">🔮</span> Run Prediction</a>
+      <a class="nav-link active" href="{{ url_for('analytics') }}"><span class="icon">📈</span> Analytics & Graphs</a>
+      <div class="nav-section-label" style="margin-top:12px;">System</div>
+      {% if session.role == 'admin' %}
+      <a class="nav-link" href="{{ url_for('admin_panel') }}"><span class="icon">🛡️</span> Admin Panel</a>
+      {% endif %}
+      <a class="nav-link" href="{{ url_for('logout') }}"><span class="icon">🚪</span> Logout</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">{{ session.username[0].upper() }}</div>
+        <div>
+          <div class="user-name">{{ session.username }}</div>
+          <div class="user-role">{{ session.role }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content fade-in">
+    <div class="page-header">
+      <h1 class="page-title">📈 Analytics & Data Visualizations</h1>
+      <p class="page-sub">Model performance analysis, feature insights, and dataset patterns</p>
+    </div>
+
+    <!-- Model Metrics Summary -->
+    <div class="stat-grid" style="margin-bottom:28px;">
+      <div class="stat-card green">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-label">Best Model F1</div>
+        <div class="stat-value">77.1<span style="font-size:16px">%</span></div>
+        <div style="font-size:12px;color:var(--text3);">Random Forest</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-label">Best Accuracy</div>
+        <div class="stat-value">74.2<span style="font-size:16px">%</span></div>
+        <div style="font-size:12px;color:var(--text3);">Logistic Regression</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-icon">📊</div>
+        <div class="stat-label">Dataset Rows</div>
+        <div class="stat-value">1,200</div>
+        <div style="font-size:12px;color:var(--text3);">With noise & variability</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-icon">📐</div>
+        <div class="stat-label">Train/Test Split</div>
+        <div class="stat-value">70<span style="font-size:16px">/30</span></div>
+        <div style="font-size:12px;color:var(--text3);">Stratified</div>
+      </div>
+    </div>
+
+    <!-- Graphs Grid -->
+    <div class="graph-grid" style="gap:20px;">
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 Model Accuracy Comparison</span>
+        </div>
+        <div class="card-body" style="padding:16px;">
+          <img src="{{ url_for('static', filename='graphs/model_comparison.png') }}"
+               class="graph-img" alt="Model Comparison">
+          <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center;">
+            Accuracy, Precision, Recall & F1-Score across all three models
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🌳 Feature Importance (Random Forest)</span>
+        </div>
+        <div class="card-body" style="padding:16px;">
+          <img src="{{ url_for('static', filename='graphs/feature_importance.png') }}"
+               class="graph-img" alt="Feature Importance">
+          <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center;">
+            Top 15 features ranked by importance score in the Random Forest model
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🥧 Placement Distribution</span>
+        </div>
+        <div class="card-body" style="padding:16px;">
+          <img src="{{ url_for('static', filename='graphs/placement_distribution.png') }}"
+               class="graph-img" alt="Placement Distribution">
+          <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center;">
+            Distribution of placed vs not-placed students in the training dataset
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">⚡ Skills vs Placement (Scatter)</span>
+        </div>
+        <div class="card-body" style="padding:16px;">
+          <img src="{{ url_for('static', filename='graphs/skills_vs_placement.png') }}"
+               class="graph-img" alt="Skills vs Placement">
+          <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center;">
+            Communication & Technical skill scores plotted against coding score, colored by placement
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Model Details Table -->
+    <div class="card" style="margin-top:24px;">
+      <div class="card-header">
+        <span class="card-title">🤖 Full Model Performance Metrics</span>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Accuracy</th>
+              <th>Precision</th>
+              <th>Recall</th>
+              <th>F1-Score</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600;color:var(--text);">Random Forest</td>
+              <td style="font-family:'JetBrains Mono',monospace;color:var(--accent);">73.6%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">74.1%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">80.4%</td>
+              <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;">77.1%</td>
+              <td><span class="badge badge-green">✅ Selected</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;color:var(--text);">Logistic Regression</td>
+              <td style="font-family:'JetBrains Mono',monospace;color:var(--accent);">74.2%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">76.0%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">77.9%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">76.9%</td>
+              <td><span class="badge" style="background:rgba(247,201,72,0.1);color:var(--gold);">Comparison</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;color:var(--text);">KNN (k=7)</td>
+              <td style="font-family:'JetBrains Mono',monospace;color:var(--accent);">65.6%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">69.0%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">68.3%</td>
+              <td style="font-family:'JetBrains Mono',monospace;">68.7%</td>
+              <td><span class="badge" style="background:rgba(247,201,72,0.1);color:var(--gold);">Comparison</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>
